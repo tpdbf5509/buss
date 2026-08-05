@@ -1,0 +1,89 @@
+import { Loader2, AlertTriangle, Inbox } from "lucide-react";
+
+export function LoadingSkeleton({ className = "" }: { className?: string }) {
+  return (
+    <div className={`animate-pulse bg-slate-200/70 rounded-xl ${className}`} />
+  );
+}
+
+export function ErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+      <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mb-4">
+        <AlertTriangle className="w-7 h-7 text-red-500" />
+      </div>
+      <p className="text-slate-700 font-medium mb-1">정보를 불러오지 못했어요</p>
+      <p className="text-slate-400 text-sm mb-4">잠시 후 다시 시도해 주세요</p>
+      <button
+        onClick={onRetry}
+        className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-medium hover:bg-slate-800 transition-colors flex items-center gap-2"
+      >
+        <Loader2 className="w-4 h-4" />
+        다시 시도
+      </button>
+    </div>
+  );
+}
+
+export function EmptyState({
+  icon: Icon = Inbox,
+  title,
+  subtitle,
+}: {
+  icon?: React.ComponentType<{ className?: string }>;
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+      <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-4">
+        <Icon className="w-7 h-7 text-slate-400" />
+      </div>
+      <p className="text-slate-600 font-medium mb-1">{title}</p>
+      {subtitle && <p className="text-slate-400 text-sm">{subtitle}</p>}
+    </div>
+  );
+}
+
+export function Toggle({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <button
+      onClick={() => onChange(!checked)}
+      className={`relative w-11 h-6 rounded-full transition-colors ${
+        checked ? "bg-blue-600" : "bg-slate-300"
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${
+          checked ? "translate-x-5" : "translate-x-0"
+        }`}
+      />
+    </button>
+  );
+}
+
+export function ArrivalBadge({ minutes }: { minutes: number }) {
+  const color =
+    minutes <= 3
+      ? "bg-red-50 text-red-600"
+      : minutes <= 10
+      ? "bg-blue-50 text-blue-600"
+      : "bg-slate-100 text-slate-500";
+  return (
+    <span
+      className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${color}`}
+    >
+      {minutes <= 1 ? "곧 도착" : `${minutes}분 후`}
+    </span>
+  );
+}
+
+export function Spinner({ className = "" }: { className?: string }) {
+  return <Loader2 className={`w-5 h-5 animate-spin text-blue-500 ${className}`} />;
+}
