@@ -14,9 +14,10 @@ export function BusScreen() {
 
   const filtered = routes?.filter(
     (r) =>
-      r.number.includes(query) ||
-      r.start.includes(query) ||
-      r.end.includes(query)
+      (r.name ?? "").includes(query) ||
+      (r.number ?? "").includes(query) ||
+      (r.start ?? "").includes(query) ||
+      (r.end ?? "").includes(query)
   );
 
   if (selectedRoute) {
@@ -71,31 +72,26 @@ export function BusScreen() {
           <div className="space-y-2">
             {filtered.map((route) => (
               <button
-                key={`${route.id}-${route.subId}`}
+                key={`${route.id}-${route.number}`}
                 onClick={() => setSelectedRoute(route)}
                 className="w-full bg-white rounded-2xl p-4 border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all"
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center">
-                      <span className="text-blue-700 font-bold text-sm">{route.number}</span>
+                    <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                      <span className="text-blue-700 font-bold text-sm leading-tight text-center">
+                        {route.number}
+                      </span>
                     </div>
                     <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-semibold text-slate-900">{route.number}번</span>
-                        {route.subId && route.subId !== "0" && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-medium">
-                            지선 {route.subId}
-                          </span>
-                        )}
-                      </div>
+                      <span className="font-semibold text-slate-900">{route.number}번</span>
                     </div>
                   </div>
                   <Star className="w-4 h-4 text-slate-300 hover:text-amber-400" />
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-slate-500">
                   <span className="font-medium text-slate-600">{route.start || "기점 정보 없음"}</span>
-                  <span className="text-slate-300">↔</span>
+                  <span className="text-slate-300">→</span>
                   <span className="font-medium text-slate-600">{route.end || "종점 정보 없음"}</span>
                 </div>
                 <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-400">
@@ -123,16 +119,9 @@ function RouteDetail({ route, onBack }: { route: Route; onBack: () => void }) {
             <ArrowLeft className="w-5 h-5 text-slate-700" />
           </button>
           <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold text-slate-900">{route.number}번</h1>
-              {route.subId && route.subId !== "0" && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-medium">
-                  지선 {route.subId}
-                </span>
-              )}
-            </div>
+            <h1 className="text-lg font-bold text-slate-900">{route.name}</h1>
             <p className="text-xs text-slate-400 mt-0.5">
-              {route.start || "기점 정보 없음"} ↔ {route.end || "종점 정보 없음"}
+              {route.start || "기점 정보 없음"} → {route.end || "종점 정보 없음"}
             </p>
           </div>
           <button
@@ -150,7 +139,6 @@ function RouteDetail({ route, onBack }: { route: Route; onBack: () => void }) {
         </div>
       </header>
 
-      {/* 실시간 도착정보 미지원 안내 */}
       <div className="px-4 pt-3">
         <div className="bg-amber-50 border border-amber-100 rounded-xl px-3.5 py-2.5 flex items-center gap-2">
           <RadioTower className="w-3.5 h-3.5 text-amber-500 shrink-0" />

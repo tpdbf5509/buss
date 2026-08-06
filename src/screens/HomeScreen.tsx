@@ -76,21 +76,27 @@ export function HomeScreen({ onNavigate }: { onNavigate: (tab: TabId) => void })
           <div className="space-y-2">
             {preview.map((route) => (
               <button
-                key={`${route.id}-${route.subId}`}
+                key={`${route.id}-${route.number}`}
                 onClick={() => onNavigate("bus")}
                 className="w-full bg-white rounded-2xl p-4 border border-slate-100 hover:border-blue-200 hover:shadow-sm transition-all text-left"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-                      <span className="text-blue-700 font-bold text-sm">{route.number}</span>
+                      <span className="text-blue-700 font-bold text-sm leading-tight text-center">
+                        {route.number}
+                      </span>
                     </div>
                     <div>
                       <span className="font-semibold text-slate-900">{route.number}번</span>
                       <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5">
-                        <span className="font-medium text-slate-600">{route.start || "기점 정보 없음"}</span>
-                        <span className="text-slate-300">↔</span>
-                        <span className="font-medium text-slate-600">{route.end || "종점 정보 없음"}</span>
+                        <span className="font-medium text-slate-600">
+                          {route.start || "기점 정보 없음"}
+                        </span>
+                        <span className="text-slate-300">→</span>
+                        <span className="font-medium text-slate-600">
+                          {route.end || "종점 정보 없음"}
+                        </span>
                       </div>
                     </div>
                   </div>
