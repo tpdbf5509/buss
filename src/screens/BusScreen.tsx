@@ -1,14 +1,18 @@
-import { useState } from "react";
-import { Search, X, Star, ArrowLeft, Bus as BusIcon, RadioTower } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Search, X, Star, ArrowLeft, Bus as BusIcon, RadioTower, Navigation } from "lucide-react";
 import { useAsync } from "@/hooks/useAsync";
+import { useBusLocations } from "@/hooks/useBusLocations";
+import { useApp } from "@/store/AppContext";
 import { fetchAllRoutes, fetchStopsForRoute } from "@/services/routeService";
 import type { Route } from "@/types/route";
+import type { Favorite } from "@/types";
 import { LoadingSkeleton, ErrorState, EmptyState } from "@/components/ui";
 import { showToast } from "@/components/Toast";
 
 export function BusScreen() {
   const [query, setQuery] = useState("");
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
+  const { state, dispatch } = useApp();
 
   const { data: routes, status, retry } = useAsync(() => fetchAllRoutes(), []);
 
@@ -19,6 +23,29 @@ export function BusScreen() {
       (r.start ?? "").includes(query) ||
       (r.end ?? "").includes(query)
   );
+  const isFavorited = (routeId: string) =>
+    state.favorites.some((f) => f.type === "route" && f.refId === routeId);
+
+  const toggleFavorite = (route: Route, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const existing = state.favorites.find(
+      (f) => f.type === "route" && f.refId === route.id
+    );
+    if (existing) {
+      dispatch({ type: "REMOVE_FAVORITE", id: existing.id });
+      showToast("즐겨찾기에서 삭제했어요");
+    } else {
+      const favorite: Favorite = {
+        id: `fav-route-${route.id}`,
+        type: "route",
+        name: `${route.number}번`,
+        label: route.number,
+        refId: route.id,
+      };
+      dispatch({ type: "ADD_FAVORITE", favorite });
+      showToast("즐겨찾기에 추가했어요");
+    }
+  };
 
   if (selectedRoute) {
     return <RouteDetail route={selectedRoute} onBack={() => setSelectedRoute(null)} />;
@@ -71,35 +98,49 @@ export function BusScreen() {
         {status === "success" && filtered && filtered.length > 0 && (
           <div className="space-y-2">
             {filtered.map((route) => (
-              <button
-                key={`${route.id}-${route.number}`}
-                onClick={() => setSelectedRoute(route)}
-                className="w-full bg-white rounded-2xl p-4 border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-                      <span className="text-blue-700 font-bold text-sm leading-tight text-center">
-                        {route.number}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="font-semibold text-slate-900">{route.number}번</span>
-                    </div>
+              <div
+              key={`${route.id}-${route.number}`}
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedRoute(route)}
+              onKeyDown={(e) => e.key === "Enter" && setSelectedRoute(route)}
+              className="w-full bg-white rounded-2xl p-4 border border-slate-100 text-left hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                    <span className="text-blue-700 font-bold text-sm leading-tight text-center">
+                      {route.number}
+                    </span>
                   </div>
-                  <Star className="w-4 h-4 text-slate-300 hover:text-amber-400" />
+                  <div>
+                    <span className="font-semibold text-slate-900">{route.number}번</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                  <span className="font-medium text-slate-600">{route.start || "기점 정보 없음"}</span>
-                  <span className="text-slate-300">→</span>
-                  <span className="font-medium text-slate-600">{route.end || "종점 정보 없음"}</span>
-                </div>
-                <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-400">
-                  <span>첫차 {route.firstBus}</span>
-                  <span>막차 {route.lastBus}</span>
-                  <span>배차 {route.interval}</span>
-                </div>
-              </button>
+                <button
+                  onClick={(e) => toggleFavorite(route, e)}
+                  className="p-1 -m-1 rounded-full hover:bg-amber-50"
+                >
+                  <Star
+                    className={`w-4 h-4 transition-colors ${
+                      isFavorited(route.id)
+                        ? "text-amber-400 fill-amber-400"
+                        : "text-slate-300 hover:text-amber-400"
+                    }`}
+                  />
+                </button>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                <span className="font-medium text-slate-600">{route.start || "기점 정보 없음"}</span>
+                <span className="text-slate-300">→</span>
+                <span className="font-medium text-slate-600">{route.end || "종점 정보 없음"}</span>
+              </div>
+              <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-400">
+                <span>첫차 {route.firstBus}</span>
+                <span>막차 {route.lastBus}</span>
+                <span>배차 {route.interval}</span>
+              </div>
+            </div>
             ))}
           </div>
         )}
@@ -110,7 +151,30 @@ export function BusScreen() {
 
 function RouteDetail({ route, onBack }: { route: Route; onBack: () => void }) {
   const { data: stops, status, retry } = useAsync(() => fetchStopsForRoute(route.id), [route.id]);
+  const { state, dispatch } = useApp();
+  const {
+    data: buses,
+    status: busStatus,
+    error: busError,
+    lastUpdated,
+    retry: retryBuses,
+  } = useBusLocations(route);
+  const busesByStop = useMemo(() => {
+    const normalize = (s: string) => (s ?? "").replace(/\s+/g, "").replace(/\(.*?\)/g, "").trim();
+    const map = new Map<string, typeof buses>();
+    if (!buses) return map;
+    for (const bus of buses) {
+      const key = normalize(bus.nodeName);
+      if (!key) continue;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(bus);
+    }
+    return map;
+  }, [buses]);
+  const normalizeStopName = (s: string) =>
+    (s ?? "").replace(/\s+/g, "").replace(/\(.*?\)/g, "").trim();
 
+ 
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
       <header className="bg-white px-4 pt-12 pb-4 border-b border-slate-100 sticky top-0 z-30">
@@ -125,10 +189,36 @@ function RouteDetail({ route, onBack }: { route: Route; onBack: () => void }) {
             </p>
           </div>
           <button
-            onClick={() => showToast("즐겨찾기에 추가했어요")}
+            onClick={() => {
+              const existing = state.favorites.find(
+                (f) => f.type === "route" && f.refId === route.id
+              );
+              if (existing) {
+                dispatch({ type: "REMOVE_FAVORITE", id: existing.id });
+                showToast("즐겨찾기에서 삭제했어요");
+              } else {
+                dispatch({
+                  type: "ADD_FAVORITE",
+                  favorite: {
+                    id: `fav-route-${route.id}`,
+                    type: "route",
+                    name: `${route.number}번`,
+                    label: route.number,
+                    refId: route.id,
+                  },
+                });
+                showToast("즐겨찾기에 추가했어요");
+              }
+            }}
             className="p-2 rounded-full hover:bg-slate-100"
           >
-            <Star className="w-5 h-5 text-slate-300" />
+            <Star
+              className={`w-5 h-5 transition-colors ${
+                state.favorites.some((f) => f.type === "route" && f.refId === route.id)
+                  ? "text-amber-400 fill-amber-400"
+                  : "text-slate-300"
+              }`}
+            />
           </button>
         </div>
         <div className="flex items-center gap-4 mt-3 text-[11px] text-slate-400">
@@ -139,13 +229,27 @@ function RouteDetail({ route, onBack }: { route: Route; onBack: () => void }) {
         </div>
       </header>
 
-      <div className="px-4 pt-3">
-        <div className="bg-amber-50 border border-amber-100 rounded-xl px-3.5 py-2.5 flex items-center gap-2">
-          <RadioTower className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-          <p className="text-[11px] text-amber-700">
-            실시간 버스 위치·도착예정정보는 지원되지 않는 기능이에요. 정류장 순서만 확인할 수 있어요.
-          </p>
-        </div>
+      <div className="px-4 pt-3 flex items-center gap-1.5">
+        <span
+          className={`w-1.5 h-1.5 rounded-full ${
+            busStatus === "success" && buses && buses.length > 0
+              ? "bg-blue-500"
+              : busStatus === "error"
+              ? "bg-red-400"
+              : "bg-slate-300"
+          }`}
+        />
+        <span className="text-[11px] text-slate-400">
+          {busStatus === "loading" && "실시간 위치 불러오는 중"}
+          {busStatus === "error" && busError}
+          {busStatus === "success" && buses && buses.length > 0 && "실시간 위치 연동 중"}
+          {busStatus === "success" && buses && buses.length === 0 && "현재 운행 중인 버스가 없어요"}
+        </span>
+        {lastUpdated && (
+          <span className="text-[10px] text-slate-300 ml-auto">
+            {lastUpdated.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} 갱신
+          </span>
+        )}
       </div>
 
       <div className="px-4 py-4">
@@ -164,25 +268,42 @@ function RouteDetail({ route, onBack }: { route: Route; onBack: () => void }) {
           <div className="relative">
             <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-slate-200" />
             <div className="space-y-1">
-              {stops.map((stop) => (
-                <div key={`${stop.order}-${stop.id}`} className="relative flex items-start gap-3">
-                  <div className="relative z-10 mt-3 w-4 h-4 rounded-full border-2 bg-white border-slate-300 flex items-center justify-center shrink-0">
-                    <span className="sr-only">{stop.order}</span>
-                  </div>
-                  <div className="flex-1 py-2.5 px-3 rounded-xl hover:bg-white transition-colors">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-slate-400 font-medium w-5 shrink-0">
-                        {stop.order}
-                      </span>
-                      <span className="text-sm font-medium text-slate-700">{stop.name}</span>
+            {stops.map((stop) => {
+                const stopBuses = busesByStop.get(normalizeStopName(stop.name)) ?? [];
+                const hasBus = stopBuses.length > 0;
+
+                return (
+                  <div key={`${stop.order}-${stop.id}`} className="relative flex items-start gap-3">
+                    <div
+                      className={`relative z-10 mt-3 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                        hasBus ? "bg-blue-500 border-blue-500" : "bg-white border-slate-300"
+                      }`}
+                    >
+                      <span className="sr-only">{stop.order}</span>
+                    </div>
+                    <div className="flex-1 py-2.5 px-3 rounded-xl hover:bg-white transition-colors">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[11px] text-slate-400 font-medium w-5 shrink-0">
+                          {stop.order}
+                        </span>
+                        <span className="text-sm font-medium text-slate-700">{stop.name}</span>
+                        {hasBus && (
+                          <span className="flex items-center gap-1 bg-blue-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+                            <Navigation className="w-2.5 h-2.5" />
+                            {stopBuses[0].vehicleNo || "버스"}
+                            {stopBuses.length > 1 && ` +${stopBuses.length - 1}`}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                );
+              })}
+              </div>
           </div>
         )}
       </div>
     </div>
   );
 }
+              
