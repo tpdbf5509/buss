@@ -75,11 +75,12 @@ export interface CardHistory {
 
 export interface AlertSetting {
   id: string;
-  routeName: string;
-  stationName: string;
-  targetStation: string;
-  minutesBefore: number;
-  stopsBefore: number;
+  routeId: string;          // 노선 식별 ID (실시간 조회용)
+  routeName: string;        // 표시용 이름 (예: 본선385, 385번)
+  routeNumber: string;      // 버스 번호 (예: 385)
+  targetStation: string;    // 내릴 정류장 이름
+  targetStopOrder: number;  // 내릴 정류장 순서 번호
+  stopsBefore: number;      // n정거장 전에 알림
   sound: boolean;
   vibrate: boolean;
   active: boolean;

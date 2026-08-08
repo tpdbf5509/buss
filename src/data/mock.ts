@@ -46,9 +46,7 @@ export const CARD_INFO: CardInfo = {
   ],
 };
 
-export const ALERT_SETTINGS: AlertSetting[] = [
-  { id: "a1", routeName: "100번", stationName: "전주역앞", targetStation: "시청", minutesBefore: 3, stopsBefore: 2, sound: true, vibrate: true, active: true },
-];
+export const ALERT_SETTINGS: AlertSetting[] = [];
 
 export const ALERT_RECORDS: AlertRecord[] = [
   { id: "ar1", title: "하차 알림", body: "100번 버스가 시청 정류장에 3분 후 도착합니다.", time: "오늘 08:09", read: false, type: "dropoff" },
