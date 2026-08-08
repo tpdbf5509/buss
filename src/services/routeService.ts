@@ -13,11 +13,11 @@ function formatTime(raw?: string): string {
 
 function formatRouteNumber(raw: RawRouteField): string {
   const id = raw.brtId ?? "";
-  // class 또는 subId 중 0이 아닌 값을 분선 번호로 사용
-  const branch =
-    (raw.brtClass && raw.brtClass !== "0" ? raw.brtClass : null) ??
-    (raw.brtSubid && raw.brtSubid !== "0" ? raw.brtSubid : null) ??
-    "";
+  // 숫자로 된 분선만 붙임 (A, B, C 같은 영어는 무시)
+  const candidates = [raw.brtClass, raw.brtSubid];
+  const branch = candidates.find(
+    (v) => v && v !== "0" && /^\d+$/.test(v)
+  );
 
   if (branch) {
     return `${id}-${branch}`;
@@ -57,7 +57,7 @@ function mapToBusStop(raw: RawRouteField, index: number): BusStop {
   };
 }
 
-const CACHE_KEY = "jeonju_routes_v2";
+const CACHE_KEY = "jeonju_routes_v3";
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24시간
 
 let routesCache: Route[] | null = null;
