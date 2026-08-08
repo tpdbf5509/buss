@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Search, X, Star, ArrowLeft, Bus as BusIcon, RadioTower, Navigation } from "lucide-react";
+import { Search, X, Star, ArrowLeft, Bus as BusIcon, RadioTower, Navigation, Clock, Calendar, ChevronDown } from "lucide-react";
 import { useAsync } from "@/hooks/useAsync";
 import { useBusLocations } from "@/hooks/useBusLocations";
 import { useApp } from "@/store/AppContext";
@@ -315,6 +315,7 @@ export function BusScreen() {
 function RouteDetail({ route, onBack }: { route: Route; onBack: () => void }) {
   const { data: stops, status, retry } = useAsync(() => fetchStopsForRoute(route.id), [route.id]);
   const { state, dispatch } = useApp();
+  const [showSchedule, setShowSchedule] = useState(false);
   const {
     data: buses,
     status: busStatus,
@@ -390,6 +391,14 @@ function RouteDetail({ route, onBack }: { route: Route; onBack: () => void }) {
           <span>배차간격 {route.interval}</span>
           <span>{route.distance}</span>
         </div>
+        <button
+          onClick={() => setShowSchedule(true)}
+          className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 bg-blue-50 text-blue-700 rounded-xl text-sm font-semibold hover:bg-blue-100 transition-colors"
+        >
+          <Clock className="w-4 h-4" />
+          배차시간 보기
+          <ChevronDown className="w-4 h-4" />
+        </button>
       </header>
 
       <div className="px-4 pt-3 flex items-center gap-1.5">
@@ -465,6 +474,154 @@ function RouteDetail({ route, onBack }: { route: Route; onBack: () => void }) {
               </div>
           </div>
         )}
+      </div>
+
+      {showSchedule && (
+        <DispatchScheduleModal route={route} onClose={() => setShowSchedule(false)} />
+      )}
+    </div>
+  );
+}
+
+function parseInterval(interval: string): { min: number; max: number } | null {
+  const match = interval.match(/(\d+)~(\d+)분/);
+  if (match) return { min: parseInt(match[1], 10), max: parseInt(match[2], 10) };
+  const single = interval.match(/(\d+)분/);
+  if (single) {
+    const val = parseInt(single[1], 10);
+    return { min: val, max: val };
+  }
+  return null;
+}
+
+function parseTimeToMinutes(time: string): number {
+  const parts = time.split(":");
+  if (parts.length !== 2) return NaN;
+  return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+}
+
+function generateTimetable(firstBus: string, lastBus: string, interval: string): string[] {
+  const info = parseInterval(interval);
+  if (!info) return [];
+  const start = parseTimeToMinutes(firstBus);
+  const end = parseTimeToMinutes(lastBus);
+  if (isNaN(start) || isNaN(end) || end <= start) return [];
+  const avg = Math.max(1, Math.round((info.min + info.max) / 2));
+  const times: string[] = [];
+  let current = start;
+  while (current <= end) {
+    const h = Math.floor(current / 60);
+    const m = current % 60;
+    times.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    current += avg;
+  }
+  return times;
+}
+
+function DispatchScheduleModal({
+  route,
+  onClose,
+}: {
+  route: Route;
+  onClose: () => void;
+}) {
+  const timetable = useMemo(
+    () => generateTimetable(route.firstBus, route.lastBus, route.interval),
+    [route.firstBus, route.lastBus, route.interval]
+  );
+  const intervalInfo = parseInterval(route.interval);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl animate-slide-up">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <Clock className="w-5 h-5 text-blue-600" />
+            <h2 className="text-lg font-bold text-slate-900">배차시간</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-slate-100">
+            <X className="w-5 h-5 text-slate-500" />
+          </button>
+        </div>
+
+        <div className="px-5 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="font-bold text-slate-900 text-lg">{route.number}번</span>
+            <span className="text-xs text-slate-400">{route.name}</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-slate-50 rounded-xl p-3 text-center">
+              <div className="flex items-center justify-center mb-1">
+                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+              </div>
+              <p className="text-[10px] text-slate-400 mb-0.5">첫차</p>
+              <p className="text-sm font-bold text-slate-700">{route.firstBus}</p>
+            </div>
+            <div className="bg-slate-50 rounded-xl p-3 text-center">
+              <div className="flex items-center justify-center mb-1">
+                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+              </div>
+              <p className="text-[10px] text-slate-400 mb-0.5">막차</p>
+              <p className="text-sm font-bold text-slate-700">{route.lastBus}</p>
+            </div>
+            <div className="bg-blue-50 rounded-xl p-3 text-center">
+              <div className="flex items-center justify-center mb-1">
+                <Clock className="w-3.5 h-3.5 text-blue-500" />
+              </div>
+              <p className="text-[10px] text-blue-400 mb-0.5">배차간격</p>
+              <p className="text-sm font-bold text-blue-700">{route.interval}</p>
+            </div>
+          </div>
+          {intervalInfo && (
+            <p className="text-[11px] text-slate-400 mt-3 text-center">
+              {intervalInfo.min}분 ~ {intervalInfo.max}분 간격으로 운행합니다
+            </p>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-1.5">
+            <Navigation className="w-4 h-4 text-blue-500" />
+            예상 출발 시간표
+          </h3>
+          {timetable.length > 0 ? (
+            <div className="grid grid-cols-4 gap-2">
+              {timetable.map((time, i) => {
+                const now = new Date();
+                const nowMin = now.getHours() * 60 + now.getMinutes();
+                const parts = time.split(":");
+                const depMin = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+                const isPast = depMin < nowMin;
+                const isNext = depMin >= nowMin && depMin <= nowMin + (intervalInfo?.min ?? 15);
+                const cls = isNext
+                  ? "bg-blue-600 text-white font-bold"
+                  : isPast
+                  ? "bg-slate-50 text-slate-300"
+                  : "bg-slate-50 text-slate-600";
+                return (
+                  <div
+                    key={time + "-" + i}
+                    className={"py-2 rounded-lg text-center text-sm font-medium transition-colors " + cls}
+                  >
+                    {time}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8">
+              <Clock className="w-8 h-8 text-slate-300 mb-2" />
+              <p className="text-sm text-slate-400">배차간격 정보가 없어</p>
+              <p className="text-sm text-slate-400">시간표를 생성할 수 없어요</p>
+            </div>
+          )}
+          {timetable.length > 0 && (
+            <p className="text-[11px] text-slate-400 mt-4 text-center">
+              배차간격을 기준으로 한 예상 시간표로, 실제와 다를 수 있어요
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
